@@ -4,7 +4,8 @@
 # Inferential statistics tutorials
 
 <!-- badges: start -->
-<!-- [![binder](https://github.com/mahendra-mariadassou/learningr/workflows/binder/badge.svg)](https://mybinder.org/v2/gh/mahendra-mariadassou/learningr/master) -->
+
+[![binder](https://github.com/mahendra-mariadassou/jc2bimStatsTutorials/workflows/binder/badge.svg)](https://mybinder.org/v2/gh/mahendra-mariadassou/jc2bimStatsTutorials/main)
 <!-- badges: end -->
 
 The goal of this package is to provide interactive tutorials for the
@@ -69,7 +70,9 @@ launching Rstudio and typing the following command in the console:
 remotes::install_github("mahendra-mariadassou/jc2bimStatsTutorials")
 ```
 
-<!-- Alternatively, you can use a remote R session to complete the tutorial by launching binder:  [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/mahendra-mariadassou/learningr/master?urlpath=rstudio) -->
+Alternatively, you can use a remote R session to complete the tutorial
+by launching binder:
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/mahendra-mariadassou/jc2bimStatsTutorials/main?urlpath=rstudio)
 
 You only need a web browser, no account or anything and the tutorials
 will always be up to date. The main drawbacks of this solution (compared

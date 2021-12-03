@@ -1,0 +1,597 @@
+---
+title: "Testing"
+output: 
+  learnr::tutorial:
+    progressive: true
+    allow_skip: true
+    df_print: default
+runtime: shiny_prerendered
+---
+
+```{r setup, include=FALSE}
+library(learnr)
+library(tidyverse)
+set.seed(42)
+can_sizes <- rnorm(1e2, mean = 330, sd = 3)
+set.seed(43)
+can_sizes_A <- rnorm(1e2, mean = 332.5, sd = 3)
+can_sizes_B <- rnorm(1e2, mean = 333, sd = 3)
+set.seed(44)
+sugar_con <- rnorm(100, 14, 1)
+sugar_con_2 <- rnorm(100, 13.5, 1)
+checker <- function(label, user_code, check_code, envir_result, evaluate_result, ...) {
+  list(message = check_code, correct = TRUE, location = "append")
+}
+tutorial_options(exercise.timelimit = 60, exercise.checker = checker)
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Detecting fraud
+
+In this case study, you are a buyer of soda cans and think a seller is cheating you by selling you smaller than advertised. The advertised capacity is 333 mL but you regularly end up needing quite more than 3 cans to fill up 1L bottles and you're starting to get suspicious. 
+
+You want to take the matter into your hands and contact a local measurement laboratory to make independent enquiries. Depending on the results you'll have to change providers. 
+
+You send the lab a pack of 100 randomly sampled cans and it sends you back the 1000 measurements, stored in the object `can_sizes`). Each element of `can_sizes` is the capacity of **one** can. 
+
+## Stating the problem and statistical model (t-test I)
+
+Note $\mu$ the **actual** can capacity of your provider and $X_i$ the capacity of can $i$ (measured to be $x_i$). 
+
+Assume the $X_i$ are independent variables and that they all follow a gaussian distribution $\mathcal{N}(\mu, \sigma^2)$ with both $\mu$ and $\sigma^2$ unknown. 
+
+### Hypothesis testing 
+
+Given the context, you need to choose a null ($H_0$) and an alternative ($H_1$) hypothesis. Your null is obviously: $H_0: \mu = 333$ but you need to think about the alternative. 
+
+```{r q1}
+question(
+  "What's the alternative hypothesis $H_1$?",
+  answer("$\\mu = 333$", correct = FALSE, message = "Definitely not! the alternative must be different from the null!"),
+  answer("$\\mu \\neq 333$", correct = FALSE, message = "It could be but you can be more specific here"),
+  answer("$\\mu > 333$", correct = FALSE, message = "Is it really a problem for you if your provider sells you larger than advertised cans"),
+  answer("$\\mu < 333$", correct = TRUE),
+  allow_retry = TRUE, 
+  post_message = "You only have a problem if the cans are smaller than expected ($\\mu < 333$). If the cans are larger than expected ($\\mu > 333$), you don't need to take action. You therefore need to gather evidence that the cans are too small. If you wanted well calibrated cans (not too small, not too big), you would choose $\\mu \\neq 333$"
+)
+```
+
+### Estimator 
+
+**Remark**: In the previous segment, you decided to test $H_0: \mu = 333$ against $H_1: \mu < 333$. You could have decided to test $H_0: \mu \geq 333$ against $H_1: \mu < 333$. Both choices leads to the same estimator and the same decision rule. $\mu = 333$ constitutes a **worst case** scenario of $\mu \geq 333$. Intuitively, it minimizes the difference between $H_0$ and $H_1$. 
+
+You need an estimator of $\mu$ to pursue. Since your statistical model is very simple, you're going to use the usual estimator $\bar{X}$. 
+
+You know that the $\bar{X} \sim \mathcal{N}(\mu, \sigma^2 / n)$ but you don't know $\sigma^2$ so you can't build the decision rule directly from $\bar{X}$. 
+
+You first need to build a statistic whose distribution is known, at least under $H_0$ (i.e. when $\mu = 333$). You can replace $\sigma^2$ with $S^2 = \frac{1}{n-1}\sum_{i=1}^n (X_i - \bar{X})^2$ and use instead $T = \frac{\bar{X} - 333}{S/\sqrt{n}}$
+
+```{r q2}
+quiz(caption = "distribution of T", 
+     question("What is the distribution of T under $H_0$?", 
+              answer("A $T(100)$ distribution", correct = FALSE, message = "Almost! Think carefully about the degrees of freedom."), 
+              answer("A $T(99)$ distribution", correct = TRUE, message = "Good job!"), 
+              answer("None of the above", correct = FALSE, message = "T does follow a Student's t distribution (as suggested by the notation"), 
+              allow_retry = TRUE), 
+     question("How does it change under $H_1$?", 
+              answer("It's shifted to the right", correct = FALSE, message = "Really? Assume $\\mu \\ll 333$ and think about the typical values of $T$."), 
+              answer("It's shifted to the left", correct = TRUE, message = "Good job"), 
+              answer("It's narrower.", correct = FALSE, message = "Does $\\mu$ affect the spread of the distribution?"), 
+              answer("It's broader.", correct = FALSE, message = "Does $\\mu$ affect the spread of the distribution?"), 
+              allow_retry = TRUE, 
+              post_message = "Indeed, if $\\mu \\ll 333$, $\\bar{X} - 333 \\simeq \\mu - 333$ will be negative and the distribution will be shifted to the left.")
+     )
+```
+
+Compute the estimation $\hat{\mu}$ of $\mu$. 
+
+```{r compute_mu, exercise = TRUE}
+
+```
+
+```{r compute_mu-solution}
+mu_hat <- mean(can_sizes)
+```
+
+What's the observed value of $T$
+
+```{r compute_t, exercise = TRUE}
+
+```
+
+```{r compute_t-solution}
+mu_hat <- mean(can_sizes)
+sigma_hat <- sd(can_sizes)
+n <- length(can_sizes)
+t <- (mu_hat - 333)/(sigma_hat / sqrt(n))
+```
+
+### Decision rule
+
+Under $H_0$, the distribution of $T$ is centered around $0$ whereas under $H_1$, it's centered around $\sqrt{n}(\mu - 333)/\sigma < 0$. Under $H_1$, $T$ is likely to be smaller that $0$. 
+
+Your reject rejection region should thus take the form $\mathcal{R} = (-\infty, r)$ with a well chosen value of $r$. 
+
+
+Using the function `qt()` (quantile of the t-distributions), find $r$ such that $P_{H_0}(T \leq r) = \alpha$ (with $\alpha = 0.05$)
+
+```{r find_threshold, exercise = TRUE}
+
+```
+
+```{r find_threshold-solution}
+qt(p = 0.05, df = 99)
+```
+
+```{r q3}
+question("Given your previous answer would you", 
+         answer("reject $H_0$", correct = TRUE, message = "Yes indeed"), 
+         answer("not reject $H_0$", correct = FALSE, message = "Compute $t$, $r$ and compare both."), 
+         allow_retry = TRUE, 
+         post_message = "Indeed, you found $t = -9.29$ and $r = -1.660391$, since $t < r$, you reject $H_0$."
+         )
+```
+
+### p-value
+
+The previous results allowed you to reject $H_0$ at level $\alpha = 0.05$. $\alpha$ controls the frequency of type I errors (where the can sizes really have a mean of 333 but your sample is quite atypical and makes you conclude otherwise)
+
+```{r fig1, echo = FALSE, out.width = "100%", fig.cap = "Type I errors"}
+knitr::include_graphics(path = "images/type_1_errors.png")
+```
+
+But what about other values of $\alpha$? 
+
+Compute rejection threshold for $\alpha = 10^{-2}$, $\alpha = 10^{-10}$ and $\alpha = 10^{-18}$
+
+```{r find_threshold_alpha, exercise = TRUE}
+
+```
+
+```{r find_threshold_alpha-solution}
+qt(p = c(1e-2, 1e-10, 1e-18), df = 99)
+```
+
+```{r q4}
+question("What levels would you reject $H_0$ at?", 
+         answer("$\\alpha = 10^{-2}$", correct = TRUE), 
+         answer("$\\alpha = 10^{-10}$", correct = TRUE),
+         answer("$\\alpha = 10^{-18}$", correct = FALSE),
+         allow_retry = TRUE)
+```
+
+Repeating the process of computing $r$ for various values of $\alpha$ and comparing it to $t$ is tedious. You can avoid it by computing 
+$$
+p = P_{H_0}(T \leq t)
+$$
+Or graphically ($p$ is very small here, you can't really see the corresponding area).
+
+```{r}
+t <- (mean(can_sizes) - 333)/(sd(can_sizes)/sqrt(length(can_sizes)))
+a <- qt(p = 0.05, df = 99) 
+x <- c(seq(-10, 10, length.out = 1001)) %>% unique() %>% sort()
+df <- tibble(x = x, 
+             d = dnorm(x), 
+             side = if_else(x < a, "lower", "greater"))
+ggplot(df, aes(x = x, y = d)) + 
+  geom_line() +
+  geom_area(aes(y = d, fill = side)) + 
+  scale_fill_manual(values = c(lower = "darkred", greater = "transparent"), guide = "none") + 
+  geom_vline(xintercept = a, color = "darkred", linetype = 2) +
+  annotate(x = a, y = dt(a, df = 99), hjust = 0, vjust = 0, geom = 'text', label = "alpha", parse = TRUE, color = "darkred") +
+  annotate(x = a, y = 0, hjust = -1, vjust = 0, geom = 'text', label = "r", parse = TRUE, color = "darkred") +
+  geom_vline(xintercept = t, color = "red", linetype = 2) +
+  annotate(x = t, y = 0, hjust = -1, vjust = 0, geom = 'text', label = "t", parse = TRUE, color = "red") +
+  annotate(x = t, y = 0.05, hjust = -1, vjust = 0, geom = 'text', label = "p", parse = TRUE, color = "red")
+```
+
+By definition of $p$, as soon as $\alpha > p$, you can reject $H_0$ at level $\alpha$. This is the so-called $p$-value. Intuitively, the lower the p-value, the better your evidence against $H_0$. 
+
+Compute the p-value of your test:
+```{r compute_p, exercise = TRUE}
+
+```
+
+```{r compute_p-hint}
+"Use pt() with the right value for the degree of freedom"
+```
+
+```{r compute_p-solution}
+t <- -9.29062
+pt(t, df = 99)
+```
+
+### One-liner
+
+Typing all of the above to compute $\hat{\mu}$, $\hat{\sigma}$, $t$ and $p$ is not very convenient. Fortunately, `R` provides the `t.test()` function to spare you some typing:
+
+```{r echo = TRUE}
+t.test(x = can_sizes, mu = 333, alternative = "less")
+```
+
+where you specified that you're doing a one sample t-test and are testing $H_0 : \mu = 333$ (`mu` argument) against $H_0 : \mu < 333$ (`alternative` argument). 
+
+See how the output provides you with a nice summary of the test statitic (`t`), the degree of freedom (`df`), the p-value (`p-value`) that you computed manually. It also gives you $\hat{\mu}$.
+
+```{r q5}
+quiz(caption = "t test", 
+     question("Do you have convincing evidence that you provider is cheating you?", 
+     answer("Yes", correct = TRUE), 
+     answer("No", correct = FALSE), 
+     post_message = "With a p-value as small as 1.929e-15, it's very unlikely that you ended with a mean capacity of 330.0975 in your sample just by chance. The provider is cheating you of roughly 1% of your due."), 
+     question("How would you perform a test of $H_0: \\mu = 333$ against $H_0: \\mu \\neq 333$?", 
+              answer('`t.test(x = can_sizes, mu = 333, alternative = "greater")`', correct = FALSE), 
+              answer('`t.test(x = can_sizes, mu = 333, alternative = "two.sided")`', correct = TRUE, message = "You can even omit `alternative = 'two.sided'`as it's the defaut value of `alternative`"))
+)
+```
+
+**Bonus** You can use `t.test()` to quickly build a confidence interval of $\hat{\mu}$ at any level 
+```{r echo = TRUE}
+t.test(x = can_sizes, conf.level = 0.99)
+```
+
+The p-value is not really interesting here (we just tested $H_0: \mu = 0$ against $H_0: \mu \neq 0$ which is stupid in that context) but we 99% percent confidence interval is [329.2770, 330.9181]. 
+
+```{r q6}
+question("Which of the following are 95% confidence intervals of $\\mu$", 
+         answer("[329.4777, 330.7174]", correct = TRUE), 
+         answer("($-\\infty$, 330.6163]", correct = TRUE), 
+         answer("(329.5788, $\\infty$)", correct = TRUE), 
+         allow_retry = TRUE, post_message = "All of them are valid 95% confidence interval (you can check by changing the value of `alternative` in the call to `t.ttest()`). The first is optimal as it's the smallest one (and corresponds to a bilateral test).")
+```
+
+## Changing provider (t-test II)
+
+Based on your previous investigations, you decide to change providers for a more honest one. You contact providers A and B, both of which send you a sample of 100 cans (`can_sizes_A` and `can_sizes_A`) for you to test. 
+
+### Assessing the providers
+
+Test whether A and B really sell 333mL cans:
+
+```{r assess_A_B, exercise = TRUE}
+
+```
+
+```{r assess_A_B-hint-1}
+"Reproduce the code used for the original provider"
+```
+
+```{r assess_A_B-hint-2}
+"Use the `t.test()` function()"
+```
+
+```{r assess_A_B-solution}
+t.test(can_sizes_A, mu = 333, alternative = "less")
+t.test(can_sizes_B, mu = 333, alternative = "less")
+```
+
+```{r q7}
+question("Which of the following statements do you agree with?", 
+         answer("Provider A cans are 333mL large", correct = TRUE), 
+         answer("Provider B cans are 333mL large", correct = TRUE), 
+         allow_retry = TRUE,
+         post_message = "For both providers, you obtained large p-values. There is thus no reason to distrust either. To be perfectly accurate, you don't reject the assumption that the cans are 333mL large. They could be, for example provider A could sell you 332.5 mL large cans, but you don't have enough evidence to detect that.")
+```
+
+### Comparing the providers 
+
+Your first tests suggest that providers A and B are not selling grossly undersized cans but before picking one of them, you want to check if there are differences between the cans they sell. This is a test of _equality of the means_.
+
+Formally note:
+
+- $n_A$ (resp. $n_B$) the number of cans from provider $A$ (resp. $B$)
+- $X_i^A$ (resp. $X_i^B$) the size of can $i$ from provider $A$ (resp. $B$)
+
+And assume that the $(X_i^A)_{i=1\dots n_A}$ (resp. $(X_i^A)_{i=1\dots n_A}$) are i.i.d $\mathcal{N}(\mu_A, \sigma^2_A)$ (resp. $\mathcal{N}(\mu_B, \sigma^2_B)$). For simplicity, you can assume $\sigma_A = \sigma_B = \sigma$ (equal but unknown variances) and $n_A = n_B = n$ (equal sample sizes). 
+
+You want to test $H_0: \mu_A = \mu_B$ against $H_1: \mu_A \neq \mu_B$. You can do that using `t.test()` with the following syntax (fill in the blanks):
+
+```{r compare_provider_A_and_B, exercise = TRUE}
+t.test(
+  x = ,            ## can sizes from provider A 
+  y = ,            ## can sizes from provider B 
+  alternative = ,  ## what should you put here?
+  var.equal = TRUE ## keep that value unchanged
+)
+```
+
+```{r compare_provider_A_and_B-solution}
+t.test(
+  x = can_sizes_A,
+  y = can_sizes_B,
+  alternative = "two.sided",
+  var.equal = TRUE 
+)
+```
+
+```{r q8}
+question("Did you find a difference between providers A and B?", 
+         answer("Yes", correct = FALSE, message = "Have a look at the p-value again"), 
+         answer("No", correct = TRUE), 
+         post_message = "Your p-value is quite large at 0.15 the 95% confidence interval of $\\mu_A - \\mu_B$ is [-1.41, 0.22] which includes 0. You thus don't have real evidence that providers A and B are different")
+```
+
+### Another syntax
+
+In many real life context, your data will not be stored in two vectors `can_sizes_A` and `can_sizes_B` but rather in a tibble object:
+
+```{r}
+data_size = tibble(provider = rep(c("A", "B"), each = 100), 
+                   can_size = c(can_sizes_A, can_sizes_B))
+```
+
+```{r, echo = TRUE}
+data_size
+```
+
+There's no need to build two different vectors, you can use `t.test()` with the so called formula interface as follows
+```{r echo = TRUE}
+t.test(can_size ~ provider, data = data_size, 
+       var.equal = TRUE, alternative = "two.sided")
+```
+
+Note that the results are exactly the same as before. 
+
+### Power computation
+
+Your estimates are $\hat{\mu}_A = 332.6869$ and $\hat{\mu}_B = 333.2820$. The difference was not significant but it might be because you are _underpowered_ (i.e. the difference between $\mu_A$ and $\mu_B$ is real but small and you don't have enough samples to find it).
+
+In that case, your conclusion is a Type II error (we're concluding that there's no difference when there really is one). 
+
+```{r fig2, echo = FALSE, out.width = "100%", fig.cap = "Type II errors"}
+knitr::include_graphics(path = "images/type_2_errors.png")
+```
+
+Let's say you want to find differences as small as 0.5 mL with high probability (say 0.9). You probably need more than 100 samples. Finding the exact value $n = n_A = n_B$ is called a _power study_. This is the goal of this section. 
+
+But first a bit of theory. The test statistic we just used is 
+
+$$
+T = \sqrt{n}\frac{\bar{X}_A - \bar{X}_B}{\sqrt{S_A^2 + S_B^2}}
+$$
+With the usual estimators of $\mu_A$, $\mu_B$, $\sigma_A^2$ and $\sigma_B^2$. The statistics is a bit complex but you only need to know that under $H_0$, $T \sim \mathcal{T}(2n-2)$
+
+Since you're doing a two-sided test, the rejection rule is $\mathcal{R} : |T| \geq r_\alpha$ where $r_\alpha$ is chosen such that 
+$$
+P_{H_0}(|T| > r_\alpha) = P_{H_0}(T < - r_\alpha) + P_{H_0}(T > r_\alpha) = \alpha
+$$
+and can be computed as `qt(1 - alpha/2, df = 2*n -2)`. In our example: 
+```{r echo = TRUE}
+alpha <- 0.05
+n <- 100
+qt(1 - alpha/2, df = 2*n -2)
+```
+
+What happens if $\Delta = \mu_A - \mu_B \neq 0$? 
+
+Your test statistic $T$ does not follow a $\mathcal{T}(2n-2)$ distribution anymore. 
+
+A close look shows that 
+$$
+\sqrt{n}\frac{(\bar{X}_A - \bar{X}_B) - \Delta}{\sqrt{S_A^2 + S_B^2}} = T - \frac{\sqrt{n}\Delta}{\sqrt{S_A^2 + S_B^2}} \sim \mathcal{T}(2n -2)
+$$
+Note that under $H_0$, $\Delta = 0$ so that $\frac{\sqrt{n}\Delta}{\sqrt{S_A^2 + S_B^2}} = 0$ and the above equality simplifies to $T \mathcal{T}(2n-2)$ under $H_0$. For simplicity, we're going to assume that $n$ is large enough to approximate $\sqrt{S_A^2 + S_B^2} = 2\sigma^2$. 
+
+The probability to reject $H_0$ (and thus detect differences) is given by the same decision rule $\mathcal{R}$ but the distribution of $T$ has changed from $P_{H_0} = P_{0}$ (i.e. where the subscript indicates the value of $\Delta$) to $P_{H_1} = P_{\Delta}$. It is thus given by
+$$
+\begin{align}
+P_{\Delta}(|T| > r_\alpha) & = P_{\Delta}(T < - r_\alpha) + P_{\Delta}(T > r_\alpha) \\ 
+& = P\left(\mathcal{T}(2n -2) + \frac{\sqrt{n}\Delta}{\sqrt{2}\sigma} < -r_\alpha\right) + P\left(\mathcal{T}(2n -2) + \frac{\sqrt{n}\Delta}{\sqrt{2}\sigma} > r_\alpha\right) \\
+& = P\left(\mathcal{T}(2n -2) < -r_\alpha - \frac{\sqrt{n}\Delta}{\sqrt{2}\sigma} \right) + P\left(\mathcal{T}(2n -2) > r_\alpha - \frac{\sqrt{n}\Delta}{\sqrt{2}\sigma} \right)
+\end{align}
+$$
+
+In our example, $\sqrt{2}\sigma \simeq \sqrt{S_A^2 + S_B^2} = 4.11$, $\alpha = 0.05$, $n=100$ and $r_\alpha = 1.97$. Let's compute $P_{\Delta}(|T| > r_\alpha)$ for $\Delta = 0.5$. 
+
+```{r echo = TRUE}
+c <- sqrt(100) * 0.5 / 4.11 ## 1.21
+pt(-1.97 - c, df = 198) + (1 - pt(1.97 - c, df = 198))
+```
+
+We only have a 22.6% chance of detecting a difference of 0.5mL between the provider!!
+
+Let take look at the detection power $P_{\Delta}(|T| > r_\alpha)$ as a fonction of $\Delta$. 
+
+```{r echo = FALSE}
+power <- function(delta) {
+  c <- sqrt(100) * delta / 4.11 ## 1.21
+  pt(-1.97 - c, df = 198) + (1 - pt(1.97 - c, df = 198))
+}
+tibble(Delta = seq(-2, 2, length.out = 1001), 
+       Power = power(Delta)) %>% 
+  ggplot(aes(x = Delta, y = Power)) + geom_line() + 
+  geom_vline(xintercept = 0.5, linetype = 2) + 
+  annotate("text", x = 0.52, y = 0, vjust = 0, hjust = 0, label = "Delta == 0.5", parse = TRUE) + 
+  geom_hline(yintercept = power(0.5), linetype = 2) + 
+  annotate("text", x = 0.52, y = power(0.5), vjust = 1, hjust = 0, label = "P[Delta](abs(T) >  r[alpha]) == 0.22", parse = TRUE)
+```
+
+As expected, the bigger the difference $|\Delta|$, the higher the detection power. For a given value of $\Delta$ (here 0.5), we can look at the detection power $P_{\Delta}(|T| > r_\alpha)$ as a fonction of $n$.
+
+```{r echo = FALSE}
+power <- function(n) {
+  c <- sqrt(n) * 0.5 / 4.11 ## 1.21
+  pt(-1.97 - c, df = 198) + (1 - pt(1.97 - c, df = 198))
+}
+tibble(n = seq(10, 1000, by = 10), 
+       Power = power(n)) %>% 
+  ggplot(aes(x = n, y = Power)) + geom_line() + 
+  ## n = 717
+  geom_vline(xintercept = 717, linetype = 2) + 
+  annotate("text", x = 719, y = 0, vjust = 0, hjust = 0, label = "n == 717", parse = TRUE) + 
+  geom_hline(yintercept = power(717), linetype = 2) + 
+  annotate("text", x = 719, y = power(717), vjust = 1, hjust = 0, label = "power = 0.90")
+```
+
+The graph reveals that you would need quite large sample sizes (> 700) to reliably detect differences of magnitude $0.5$mL. You decide not to do it. 
+
+### About equality of variance
+
+If you're not sure that the variances are equal in the two populations, you can set remove `var.equal = TRUE` or set `var.equal = FALSE` (the default) in `t.test()`. In general, it's good practice to check that the variances are equal between the two groups either by visual inspection:
+
+```{r echo = TRUE}
+ggplot(data_size, aes(x = provider, y = can_size)) + geom_boxplot()
+```
+
+Or with a test of equality of variances (`var.test()`)
+
+```{r echo = TRUE}
+var.test(can_size ~ provider, data = data_size)
+```
+
+Both checks confirm that we can reasonably assume $\sigma_A^2 = \sigma_B^2$. 
+
+## Assessing conformity (`prop.test()` I)
+
+Based on the previous results, you can't really decide between producers $A$ and $B$ and end up picking $A$ based on price. 
+
+After a few months you decide to evaluate the quality of the provider by looking at the sugar concentration in the soda. Provider $A$ advertises "> 80% of our cans contain at least 13.2 g / 100 mL of sugar". You measure sugar concentration (in g / 100 mL) in a sample of 100 cans and end up with 100 concentrations stored in `sugar_con`. 
+
+Formally, note $X_i$ the sugar concentration of can $i$ coded as $1$ (or `TRUE`) if the concentration is higher than 13.2 and $0$ (or `FALSE`) otherwise. 
+
+Assume that the $(X_i)$ are $i.i.d.$ with distribution with $X_i \sim \mathcal{B}(p)$.
+
+```{r q9}
+quiz(caption = "Formulating the hypotheses", 
+     question("Which of the following are valid null hypotheses ($H_0$)?", 
+              answer("$p = 0.8$", correct = TRUE), 
+              answer("$p \\geq 0.8$", correct = TRUE), 
+              answer("$p \\leq 0.8$", correct = FALSE),
+              answer("$p \\neq 0.8$", correct = FALSE), 
+              allow_retry = TRUE, 
+              post_message = "Your null hypothesis is what you need evidence against. Here you should assume the provider is honest and thus that $p \\geq 0.8$ or $p = 0.8$"), 
+     question("What is the alternative hypothesis ($H_1$)?", 
+              answer("$p = 0.8$", correct = FALSE), 
+              answer("$p > 0.8$", correct = FALSE), 
+              answer("$p < 0.8$", correct = TRUE),
+              answer("$p \\neq 0.8$", correct = FALSE, message = "It could be in other context, but not here. Read the statement of provider A again."), 
+              allow_retry = TRUE, 
+              post_message = "Your provider claims that at least 80% of the cans are valid (in term of sugar concentrations). The alternative is that at most 80% of them are.")
+)
+```
+
+### Preparing the data
+
+Build a boolean vector `conform` to identify the cans with concentrations higher than 13.2. 
+
+```{r sugar_con_conform, exercise = TRUE}
+conform <- 
+```
+
+```{r sugar_con_conform-hint}
+"Use `>=`"
+```
+
+```{r sugar_con_conform-solution}
+conform <- sugar_con >= 13.2
+```
+
+Use `table()` to count the number of `TRUE` in `conform`
+
+```{r count_sucess, exercise = TRUE}
+
+```
+
+```{r count_sucess-solution}
+conform <- sugar_con >= 13.2
+table(conform)
+```
+
+### Performing the test
+
+Equipped with this knowledge, you can test $H_0: p = 0.8$ against $H_0: p < 0.8$ using `prop.test()` using the following syntax (fill in the blanks): 
+
+```{r prop_test, exercise = TRUE}
+prop.test(
+  x = , ## Number of successes, here valid cans 
+  n = , ## Number of trials, here measured cans
+  p = , ## value of p under H_0
+  alternative = ## What should you put here?
+)
+```
+
+```{r prop_test-solution}
+prop.test(
+  x = 77, ## Number of successes, here valid cans 
+  n = 100, ## Number of trials, here measured cans
+  p = 0.8, ## value of p under H_0
+  alternative = "less" ## What should you put here?
+)
+```
+
+```{r q10}
+question("Based on your test, would you", 
+         answer("reject the claim of the provider", correct = FALSE, message = "How small is the p-value? Is that enough to reject $H_0$."), 
+         answer("not reject the claim of the provider", correct = TRUE), 
+         allow_retry = TRUE, 
+         post_message = "Indeed, you found a p-value of 0.266 which is not small enough to reject the claim (at least not at level 0.05)"
+         )
+```
+
+**Bonus** Just like `t.test()`, you can use `prop.test()` to compute confidence intervals for $p$. 
+
+```{r q11}
+question("What is the 95% bilateral confidence interval of p?", 
+         answer("[0, 0.836]", correct = FALSE, message = "That's a unilaterial interval"),
+         answer("[0.689, 1]", correct = FALSE, message = "That's a unilaterial interval"), 
+         answer("[0.673, 0.846", correct = TRUE, message = "Indeed"),
+         allow_retry = TRUE, 
+         post_message = "You can find it using `prop.test(x = 77, n = 100, conf.level = 0.95, alternative = 'two.sided')`"
+         )
+```
+
+## Assessing conformity (`prop.test()` II)
+
+After a few months, your provider announces a change in his soda formulation. To make you sure you don't get flouted you create a new sample of 100 cans and check the sugar concentration in those cans, resulting in a new vector `sugar_con_2`. You want to check that that the proportion of valid cans is unchanged. 
+
+Formally, if you note $p_1$ the proportion before the change and $p_2$ the proportion after, you want to test $H_0: p_1 = p_2$ against $H_1: p_1 \neq p_2$. 
+
+You first need to do a few computations. Compute the number of valid cans in you new sample
+
+```{r valid_after_change, exercise = TRUE}
+
+```
+
+```{r valid_after_change-hint}
+"Repeat what you did for `sugar_con`"
+```
+
+```{r valid_after_change-solution}
+conform <- sugar_con_2 >= 13.2
+table(conform)
+```
+
+You can now perform a test of equality of proportions before and after the change of formula
+```{r prop_test_2, exercise = TRUE}
+successes <- c(, ) ## number of valids cans before and after the change in formula
+trials <- c(, ) ## number of cans tested before and after the change in formula
+prop.test(x = sucesses, 
+          n = trials, 
+          alternative = ## What's your alternative hypothesis? 
+          )
+```
+
+```{r prop_test_2-hint-1}
+successes <- c(77, 54) 
+```
+
+```{r prop_test_2-hint-2}
+successes <- c(77, 54) 
+trials <- c(100, 100)
+```
+
+```{r prop_test_2-solution}
+successes <- c(77, 54)
+trials <- c(100, 100)
+prop.test(x = sucesses, n = trials, alternative = "two.sided")
+```
+
+```{r q12}
+question("Based on your results, would you say that the formulation change ", 
+         answer("affected the proportion of valid cans", correct = TRUE), 
+         answer("did not affect the proportion of valid cans", correct = FALSE, message = "Take another look at the p-value"), 
+         allow_retry = TRUE, 
+         post_message = "With a p-value at 0.001, you have pretty good evidence that $p_1 \\neq p_2$, so that the formulation change affected the proportion of valid cans. You can even say that the difference $p_1 - p_2$ is likely to lie in [0.09, 0.368], which is its 95% confidence interval")
+```
+
+

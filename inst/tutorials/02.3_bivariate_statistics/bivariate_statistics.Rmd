@@ -10,7 +10,6 @@ runtime: shiny_prerendered
 ```{r setup, include=FALSE}
 library(learnr)
 library(tidyverse)
-data(pres2017, package = "learningr")
 knitr::opts_chunk$set(echo = TRUE)
 ## Variables shared by all exercices
 set.seed(1)

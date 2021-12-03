@@ -262,12 +262,12 @@ first_and_second_diamonds <- sample(x = jar, size = 2, replace = FALSE)
 
 ### Finite versus infinite populations
 
-The biggest difference between finite populations (diamonds) and infinite populations (dice throws) is that you can throw a dice infinitely many times but you run out of diamonds at some point. 
+The biggest difference between finite populations (diamonds) and infinite populations (dice rolls) is that you can roll a dice infinitely many times but you run out of diamonds at some point. 
 
 In particular:
 
-- the results of 10 dice throws are likely to differ whereas
-- you end up with the **exact same** diamonds if you pick 16 diamonds from the previous jar (although you may pick them in differnt orders). 
+- the results of 10 dice rolls are likely to differ whereas
+- you end up with the **exact same** diamonds if you pick 16 diamonds from the previous jar (although you may pick them in different orders). 
 
 Futhermore, whenever the random variable is associated to a **finite population**, it is **discrete**. Indeed if the population has size $N$, the random variables takes at most $N$ different values (and often less than that, as in our diamond example). 
 
@@ -290,6 +290,7 @@ We're going to illustrate the notions of
 - Expectation
 - Standard deviation
 - Cumulative distribution function
+- Quantiles
 
 on finite populations using our diamonds in a jar example. Those concepts can be extended to infinite populations (or equivalently random variables that can take infinitely many values) but we'll leave that for later. 
 
@@ -495,7 +496,8 @@ $$
 
 In our example:
 ```{r var_example, echo = FALSE}
-plot_data <- data.frame(size = jar) %>% count(size, name = "count") %>% 
+plot_data <- data.frame(size = jar) %>% 
+  count(size, name = "count") %>% 
   mutate(prob              = count / sum(count),
          mean              = mean(jar), 
          deviation         = size - mean, 
@@ -549,7 +551,7 @@ auto_var <- var(large_jar)
 auto_var - manu_var
 ```
 
-It seems that there is a small but no null difference between the two quantities. That's normal. For reasons you'll understand later, the variance $\mathbb{V}_R(X)$ computed by `var()` (and by the same function in most computer languages) is slightly different from the one defined above. The two are related by the relation  
+It seems that there is a small but non null difference between the two quantities. That's normal. For reasons you'll understand later, the variance $\mathbb{V}_R(X)$ computed by `var()` (and by the same function in most computer languages) is slightly different from the one defined above. The two are related by the relation  
 
 $$
 \mathbb{V}_R(X) = \frac{N}{N-1} \mathbb{V}(X) = \frac{1}{N-1} \sum_{i=1}^N \left( x_i - \mathbb{E}(X) \right)^2

@@ -11,7 +11,7 @@ runtime: shiny_prerendered
 library(learnr)
 library(dplyr)
 library(ggplot2)
-data(pres2017, package = "learningr")
+data(pres2017, package = "jc2bimStatsTutorials")
 knitr::opts_chunk$set(echo = FALSE)
 ## Variables shared by all exercices
 set.seed(1)

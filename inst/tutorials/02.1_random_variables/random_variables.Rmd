@@ -680,7 +680,7 @@ $$
 And therefore that $4$ is the quantile or order 70\%. However, because $X$ is discrete we **can't** say 70% of the diamond sizes are smaller than 4. In fact, if you look carefully at the graph (and the definition), you can see that $4$ is the quantile of order 70\% but also of order 90\% and in fact or any order between $\frac{5}{8}$ (= 62.5\%) and $\frac{15}{16}$ (= 93.75\%)
 
 ```{r quantile_question}
-question("What is the quantile of order 50% of the sequence $\\{1, \\dots, 100, \\}?", 
+question("What is the quantile of order 50% of the sequence $\\{0, \\dots, 100, \\}$?", 
          answer("1"),
          answer("50", correct = TRUE), 
          answer("51"), 

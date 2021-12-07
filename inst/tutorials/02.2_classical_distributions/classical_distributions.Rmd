@@ -99,11 +99,6 @@ quiz(
            answer("increases"), 
            answer("decreases"), 
            answer("It depends", TRUE), 
-           allow_retry = TRUE), 
-  question("For fixed $\\mu$ and fixed $x$, when $\\sigma$ increases, $f_{\\mu, \\sigma}(x)$", 
-           answer("increases"), 
-           answer("decreases"), 
-           answer("It depends", TRUE), 
            allow_retry = TRUE)
 )
 ```
@@ -396,7 +391,7 @@ quiz(caption = "pnorm()",
           answer("$I = [-1.645, +\\infty]$", TRUE), 
           answer("$I = [-\\infty, 1.645]$", TRUE),        
           answer("$I = [-1.96, 1.96]$", TRUE),        
-          answer("$I = [-1.645, 1.645]$", TRUE),      
+          answer("$I = [-1.645, 1.645]$", FALSE),      
           allow_retry = TRUE, 
           random_answer_order = TRUE, 
           message = "Use pnorm() to compute the probability of the various intervals if you're not sure."
@@ -451,7 +446,7 @@ question("The value of $x$ is:",
 
 The last point we'll cover concerns sums of random variables. Consider two independent random variables $X_1 \sim \mathcal{N}(0, 1)$ and $X_2 \sim \mathcal{N}(0, 1)$. What can we say about $Z = X_1 + X_2$? 
 
-We'll try to guess the answer using simulations. Generate 1 000 values for $X$, 10 000 values of $Y$ and build the density of $Z = X+Y$. 
+We'll try to guess the answer using simulations. Generate 10 000 values for $X$, 10 000 values of $Y$ and build the density of $Z = X+Y$. 
 
 ```{r histogram_z, exercise = TRUE}
 df <- tibble(
@@ -530,7 +525,7 @@ $$
 $$
 to ensure that $f_n$ is a proper density function. 
 
-You can evaluate this function at any with `dchisq()`, where `df` stands for degrees of freedom. 
+You can evaluate this function at any point with `dchisq()`, where `df` stands for degrees of freedom. 
 
 ```{r dchisq, exercise = TRUE}
 dchisq(x = 1, df = 1)

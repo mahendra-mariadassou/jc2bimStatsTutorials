@@ -41,9 +41,11 @@ In the next section, we'll **classify** the different types of random variables
 
 ### Discrete versus continuous
 
-```{r fig1, echo = FALSE, out.width = "100%", fig.cap = "Discrete versus continuous variables"}
+```{r fig1, echo = FALSE, out.width = "100%", fig.cap = "Discrete versus continuous variables, artwork by @allison_horst"}
 knitr::include_graphics(path = "images/continuous_discrete.png")
 ```
+
+
 
 In many examples, even if a variables is not **strictly continuous**, it makes sense to sense to consider it as continuous. 
 
@@ -55,7 +57,7 @@ Note also that a variable can be discrete but still take infinitely many values.
 
 Discrete variables don't need to be numeric, as illustrated below. 
 
-```{r fig2, echo = FALSE, out.width = "100%", fig.cap = "Discrete variables"}
+```{r fig2, echo = FALSE, out.width = "100%", fig.cap = "Discrete variables, artwork by @allison_horst"}
 knitr::include_graphics(path = "images/nominal_ordinal_binary.png")
 ```
 

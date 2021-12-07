@@ -136,7 +136,7 @@ question("Given your previous answer would you",
 
 The previous results allowed you to reject $H_0$ at level $\alpha = 0.05$. $\alpha$ controls the frequency of type I errors (where the can sizes really have a mean of 333 but your sample is quite atypical and makes you conclude otherwise)
 
-```{r fig1, echo = FALSE, out.width = "100%", fig.cap = "Type I errors"}
+```{r fig1, echo = FALSE, out.width = "100%", fig.cap = "Type I errors, artwork by @allison_horst"}
 knitr::include_graphics(path = "images/type_1_errors.png")
 ```
 
@@ -338,7 +338,7 @@ Your estimates are $\hat{\mu}_A = 332.6869$ and $\hat{\mu}_B = 333.2820$. The di
 
 In that case, your conclusion is a Type II error (we're concluding that there's no difference when there really is one). 
 
-```{r fig2, echo = FALSE, out.width = "100%", fig.cap = "Type II errors"}
+```{r fig2, echo = FALSE, out.width = "100%", fig.cap = "Type II errors, artwork by @allison_horst"}
 knitr::include_graphics(path = "images/type_2_errors.png")
 ```
 

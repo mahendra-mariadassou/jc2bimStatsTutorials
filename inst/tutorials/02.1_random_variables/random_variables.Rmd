@@ -470,7 +470,7 @@ expectation_of_y
 
 Computing $\mathbb{E}(Y)$ from the second formula is slightly more involved. The following code allows you to do it but is rarely used in practice. 
 
-```{r mean_second_formula}
+```{r mean_second_formula, echo = TRUE}
 ## Find values of Y 
 values_of_y <- as.numeric(names(table(large_jar)))
 values_of_y
@@ -690,7 +690,7 @@ question("What is the quantile of order 50% of the sequence $\\{1, \\dots, 100, 
 
 You can compute several quantiles of a random variable using the `quantile()` function. 
 
-```{r quantile_jar_example}
+```{r quantile_jar_example, echo = TRUE}
 quantile(x = jar, probs = c(0.7, 0.9))
 ```
 

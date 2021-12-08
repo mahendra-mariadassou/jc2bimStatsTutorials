@@ -1,0 +1,395 @@
+---
+title: "Bayesian inference"
+output: 
+  learnr::tutorial:
+    progressive: true
+    allow_skip: true
+    df_print: default
+runtime: shiny_prerendered
+---
+
+```{r setup, include=FALSE}
+library(learnr)
+library(dplyr)
+library(ggplot2)
+set.seed(20211208)
+pi <- rbeta(1, shape1 = 3, shape2 = 7)
+reads_at_content <- rbinom(n = 10, size = 50, prob = pi)
+checker <- function(label, user_code, check_code, envir_result, evaluate_result, ...) {
+  list(message = check_code, correct = TRUE, location = "append")
+}
+## Helper functions
+view_prior <- function(mean = 0.5, concentration = 2) {
+  tibble(x = seq(0, 1, length.out = 101), 
+         density = dbeta(x, shape1 = mean * concentration, shape2 = (1 - mean) * concentration)) %>% 
+    ggplot(aes(x = x, y = density)) + 
+    ylim(0, NA) + 
+    geom_line() + 
+    theme_bw()
+}
+##
+view_prior_and_posterior <- function(mean = 0.5, concentration = 2, Y = 17, n = 50) {
+  tibble(x     = seq(0, 1, length.out = 101), 
+         prior = dbeta(x, shape1 = mean * concentration, shape2 = (1 - mean) * concentration), 
+         posterior = dbeta(x, shape1 = mean * concentration + Y, shape2 = (1 - mean) * concentration + n - Y), 
+         ) %>% 
+    ggplot(aes(x = x, y = prior)) + 
+    ylim(0, NA) + 
+    labs(y = "density") + 
+    geom_line(color = "blue") + 
+    geom_line(aes(y = posterior), color = "red") + 
+    geom_vline(xintercept = Y/n, linetype = 2) + 
+    annotate("text", x = Y/n, y = Inf, hjust = -0.1, vjust = 1.1, label = "Obs. freq.") + 
+    theme_bw()
+}
+##
+sample_from_posterior <- function(n) {
+  rbeta(n = n, shape1 = Y1 + mu0 * nu0, shape2 = (n-Y1) + (1-mu0)*nu0)
+}
+## 
+sample_from_q <- function(n, mean = .5, concentration = 2) {
+  rbeta(n, shape1 = mean * concentration, shape2 = (1 - mean) * concentration)
+}
+##
+compute_weights <- function(pi_values, mean = .35, concentration = 90) {
+  ## Observations from first read
+  Y <- reads_at_content[1]; n = 50
+  ## Parameters of the prior
+  mu0 = 0.35; nu0 = 90
+  ## Prior 
+  prior <- dbeta(pi_values, shape1 = mu0 * nu0, shape2 = (1 - mu0) * nu0)
+  ## likelihood
+  likelihood <- dbinom(x = Y, size = n, prob = pi_values)
+  ## density of q
+  q_density <- dbeta(pi_values, shape1 = mean * concentration, shape2 = (1 - mean) * concentration)
+  prior * likelihood / q_density
+}
+##
+tutorial_options(exercise.timelimit = 60, exercise.checker = checker)
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Estimating the proportion of A/T
+
+We're going to use bayesian inference to estimate the proportion $\pi$ of As and Ts in a bacterial genome. For simplicity, we assume 
+
+- an $M_0$ model for the genome (*i.e.* independent bases, remember Sophie's presentation) 
+- that the observations ($\sim$ nucleotides) come in batches of size 50 (very short reads)
+
+We're going to 
+- illustrate the impact of the prior
+- illustrate various inference techniques (exact, importance sampling)
+- explore how sequencing additional reads change the posterior distribution for $\pi$ until it essentially collapses to a single value
+
+## Reminder 
+
+Noting $\theta = \pi$ (to be in line with slides) and $Y$ our reads ($\simeq$ observation batches), Bayes rule states that
+
+$$
+P(\theta | Y) = \frac{P(\theta, Y)}{P(Y)} = \frac{P(Y | \theta)P(\theta)}{P(Y)} \propto `P(Y | \theta)P(\theta)
+$$
+
+We need to specify:
+
+- the **prior** $P(\theta)$: a probability distribution over $[0, 1]$ (as $\theta$ takes values in $[0, 1]$)
+- the **likelihood** $P(Y|\theta)$
+
+## Choosing a prior
+
+We know that our bacteria is a *Mycobacterium*. Bacteria in that family tend to be GC rich (and thus AT poor) with typical GC content in the range 60%-70% (but lower and higher values have also been observed). 
+
+The following `view_prior()` function helps you choose a beta prior based on its mean value $\mu_0$ and its concentration $\nu_0$ parameter (the variance of the prior is $\mu_0(1 - \mu_0)/(1+\nu_0)$ so you can think as $\nu_0$ as being inversely related to the spread of the prior). 
+
+```{r}
+view_prior <- function(mean = 0.5, concentration = 3) {
+  tibble(x = seq(0, 1, length.out = 101), 
+         density = dbeta(x, shape1 = mean * concentration, shape2 = (1 - mean) * concentration)) %>% 
+    ggplot(aes(x = x, y = density)) + 
+    ylim(0, NA) + 
+    geom_line() + 
+    theme_bw()
+}
+```
+
+Experiment with `view_prior()` to explore different possible shapes. In particular explore large values of $\kappa$, small but positive values of $\nu_0$ and values of $\mu_0$ different from $0.5$
+
+```{r view_prior, exercise = TRUE}
+view_prior(mean = 0.5, concentration = 0.1)
+```
+
+```{r q1}
+question("For $\\mu_0 = 0.5$, what value of $\\nu$ gives you a flat prior ?", 
+         answer("$\\nu_0 = 2$", correct = TRUE), 
+         answer("$\\nu_0 = 1$", message = "Have a look at `view_prior(0.5, 1)`"), 
+         answer("$\\nu_0 = 0.5$", message = "Have a look at `view_prior(0.5, 0.5)`"), 
+         allow_retry = TRUE, 
+         post_message = "When $\\mu_0 = 0.5$ and $\\nu_0 = 1$, the density is flat over $[0, 1]$, the range of possible values. This is a so called *non-informative* prior.")
+```
+
+```{r q2}
+quiz(caption = "Relevant values for the prior", 
+     ##
+     question("Given the background information on *Mycobacterium*, what value would be most relevant for $\\mu_0$?", 
+              answer("$\\mu_0 = 0.35$", correct = TRUE, message = "Yes indeed !"), 
+              answer("$\\mu_0 = 0.5$", message = "If $\\pi \\simeq 0.5$, what does it mean for the GC content?"),
+              answer("$\\mu_0 = 0.65$", message = "If $\\pi \\simeq 0.5$, what does it mean for the GC content?"),
+              allow_retry = TRUE, 
+              post_message = "Since the GC content is around 65%, we expect the AT content to be around 35% and thus $\\pi \\simeq 0.35$. It thus makes sense to choose $\\mu_0 = 0.35$."),
+     ##
+     question("Given the background information on *Mycobacterium*, what value would be most relevant for $\\nu_0$?", 
+              answer("$\\nu_0 = .1$"),
+              answer("$\\nu_0 = .3$"),
+              answer("$\\nu_0 = 1$"),
+              answer("$\\nu_0 = 3$"), 
+              answer("$\\nu_0 = 10$"),
+              answer("$\\nu_0 = 30$"),
+              answer("$\\nu_0 = 90$", correct = TRUE),
+              allow_retry = TRUE, 
+              message = "Remember that you want a dispersion of roughly 10% around $\\mu_0 = 0.35$, which value of $\\nu_0$ allows you to achieve that?", 
+              post_message = "To have a dispersions of 10% around $\\mu_0 = 0.35$, you can aim for a standard deviation of 5% and thus solve $\\sqrt{\\mu_0 (1 - \\mu_0)/ (\\nu_0 + 1)} = 0.05$ in $\\nu_0$ for $\\mu_0 = 0.35$. A bit of manipulation gives $\\nu_0 = \\mu_0 (1 - \\mu_0) / 0.05^2 - 1 = 90$.")
+)
+```
+
+## Computing the posterior
+
+Imagine that the number of $A|T$s in your first read (of length $n = 50$) is $Y_1$ = `r reads_at_content[1]`. You want to compute the posterior distribution of $\pi$ given $Y_1$. You first need to compute the likelihood $P(Y_1|\pi)$. 
+
+Since we use a $M_0$ model for our genome, we know that each of the 50 nucleotides in the read has probability $\pi$ of being $A|T$. The likelihood is thus 
+
+$$
+P(Y_1|\pi) = {50 \choose Y_1}\pi^{Y_1} (1 - \pi)^{50 - Y_1} \propto \pi^{Y_1} (1 - \pi)^{50 - Y_1}
+$$
+And our prior density is proportional to (you'll have to trust me): 
+$$
+P(\pi) = \frac{\pi^{\mu_0 \nu_0} (1 - \pi)^{(1 - \mu_0)\nu_0}}{B(\mu_0 \nu_0, (1-\mu_0) \nu_0)} \propto \pi^{\mu_0 \nu_0} (1 - \pi)^{(1 - \mu_0)\nu_0}
+$$
+Where $B$ is the so called [Beta function](https://en.wikipedia.org/wiki/Beta_function). Remember that the posterior is given by $P(\pi | Y_1) = P(Y_1|\pi)P(\pi) / P(Y_1)$. Since $P(Y_1)$ is a constant not depending on $\theta$, we have (omitting all terms not depending on $\pi$): 
+
+$$
+P(\pi | Y_1) \propto P(Y_1|\pi)P(\pi) \propto \pi^{Y_1} (1 - \pi)^{50 - Y_1} \times \pi^{\mu_0 \nu_0} (1 - \pi)^{(1 - \mu_0)\nu_0} = \pi^{Y_1 + \mu_0\nu_0} (1 - \pi)^{50 - Y_1 + (1- \mu_0)\nu_0}
+$$
+
+**Note** If a continuous probability distribution over $[0,1]$ has density proportional to $x^\alpha (1 - x)^{\beta}$, it is a beta distribution with parameters 
+
+- $\mu = \frac{\alpha}{\alpha + \beta}$
+- $\nu = \alpha + \beta$.
+
+Using the previous fact, we can thus show that our posterior is a beta distribution with parameters...
+```{r q3}
+question("The posterior distribution $P(\\pi | Y_1)$ is a beta distribution with parameters:", 
+         answer("$(\\mu, \\nu)  = (\\mu_0, \\nu_0)$", message = "You just said that the posterior is equal to the prior, or equivalently that the data has no impact. Are you sure ?"),
+         answer("$(\\mu, \\nu)  = (Y_1 /50, 50)$", message = "You just said that the prior has no impact on the posterior. Are you sure ?"),
+         answer("$(\\mu, \\nu)  = ((\\mu_0 \nu_0 + Y_1)/(\\nu_0 + 50), \\nu_0 + 50)$", correct = TRUE), 
+         allow_retry = TRUE, 
+         post_message = "Both the parameters $(\\mu_0, \\nu_0)$ of the prior and the data $Y_1$ contribute to the posterior distribution.")
+```
+
+The function `view_prior_and_posterior()` represents both the <span style="color:red;">posterior</span>
+ and the <span style="color:blue;">prior</span> distribution. Explore the impact of changing $(\mu_0, \nu_0)$, in particular when choosing prior which favor large values of $\pi$ such as the one shown below
+
+```{r view_prior_and_posterior, exercise = TRUE}
+view_prior_and_posterior(mean = 0.65, concentration = 100, Y = 15, n = 50)
+```
+
+## Adding more data
+
+Instead of considering just one read, you now have access to 10 reads (each of length 50) with the following number of A/Ts
+
+```{r echo = TRUE}
+reads_at_content
+```
+
+Take the previous call to `view_prior_and_posterior()` (the one with a really bad prior). Change the call to reflect the new data
+
+```{r view_prior_and_posterior_more_data, exercise = TRUE}
+view_prior_and_posterior(mean = 0.65, concentration = 100, Y = 15, n = 50)
+```
+
+```{r view_prior_and_posterior_more_data-hint-1}
+"Which parameters do you need to change?"
+```
+
+```{r view_prior_and_posterior_more_data-hint-2}
+"Imagine that you have one long read instead of 10 small ones. What would be the values of Y and n?"
+```
+
+```{r view_prior_and_posterior_more_data-solution}
+view_prior_and_posterior(mean = 0.65, concentration = 100, 
+                         Y = sum(reads_at_content), 
+                         n = 50 * length(reads_at_content))
+```
+
+## Sampling from the posterior
+
+We consider here the sensible prior parameters $(\mu_0, \nu_0) = (0.35, 90)$ discussed before. We know that the posterior distribution of $\pi |Y_1$ is beta distributed with parameter
+
+- $\mu = \frac{Y_1 + \mu_0 \nu_0}{n + \nu_0}$
+- $\nu = n + \nu_0$
+
+You can intepret $\nu_0$ as a *sample size*. The ratio $\nu_0 / \nu$ intuitively quantifies the contribution of the prior to the posterior: the lower $\nu_0 / \nu$, the more $\pi |Y_1$ reflects by the data. 
+
+As stated in the slides, we have the full distribution $\pi |Y_1$ but no **estimate**. We can provide: 
+- an estimate as $E(\pi | Y_1)$
+- a credibility interval as $CI_{1-\alpha}$ such that $P(\pi \in CI_{1-\alpha} | Y_1) = 1 - \alpha$. 
+
+In this example, we can compute the posterior mean exactly:
+
+- $ E(\pi | Y_1) = \mu = \frac{Y_1 + \mu_0 \nu_0}{n + \nu_0}$ = 0.332
+
+And we compute the bounds of $CI_{1-\alpha}$ using the quantile function `qbeta()` as usual (we look at the quantile $q_{\alpha/2}$ for the left bound and $q_{1 - \alpha/2}$ for the right bound). 
+
+```{r echo = TRUE}
+alpha <- 0.05
+mu0 <- 0.35; nu0 <- 90; Y1 <- 15; n <- 50
+## Left bound
+qbeta(alpha/2, shape1 = Y1 + mu0 * nu0, shape2 = (n-Y1) + (1-mu0)*nu0)
+## right bound
+qbeta(1 - alpha/2, shape1 = Y1 + mu0 * nu0, shape2 = (n-Y1) + (1-mu0)*nu0)
+```
+
+to find $IC_{1 - \alpha} = [0.257, 0.412]$. 
+
+### Direct sampling 
+
+In many cases, we don't have access to the full posterior (and thus can't do exact computations) but can samples values of $\pi$ from the distribution of $\pi |Y_1$. In that we can still compute the posterior mean and the credibility interval as follows:
+
+1. Sample a large number ($N$) of values of $\pi$ from the distribution of $\pi |Y_1$: $(\pi_1, \dots, \pi_N)$
+2. Compute the empirical mean: $\hat{\pi}_{MAP} = \frac{1}{N} \sum_{i=1}^N \pi_i$ (where MAP stands for Mean A Posteriori)
+3. Compute the empirical quantiles to build your credibility interval by sorting the $\pi_i$ in increasing order $\pi_{(1)} \leq \dots \leq \pi_{(N)}$ and setting the quantile of order $\alpha$ as $\pi_{(\lfloor N\alpha \rfloor)}$
+
+Using the provided `sample_from_posterior()` function, compute the mean a posteriori:
+
+```{r-mc-map, exercice = TRUE}
+pi_values <- sample_from_posterior(n = ...)
+...
+```
+
+```{r-mc-map-hint-1}
+"You just need to take the mean of the pi values sampled from the posterior"
+```
+
+```{r-mc-map-solution}
+pi_values <- sample_from_posterior(n = 1000)
+mean(pi_values)
+```
+
+Using the provided `sample_from_posterior()` function, compute the credibility interval of level 90%:
+
+```{r-mc-ci, exercice = TRUE}
+pi_values <- sample_from_posterior(n = ...)
+...
+```
+
+```{r-mc-ci-hint-1}
+"Choose a value of n that makes quantiles easy to compute."
+```
+
+```{r-mc-ci-hint-2}
+"For example n = 100, n = 1000 or n = 10000. The larger the better but the more time-consuming."
+```
+
+```{r-mc-ci-hint-3}
+"Sort the vector pi_values using sort(), what values are you interested in?"
+```
+
+```{r-mc-ci-hint-4}
+n <- 10000
+pi_values <- sample_from_posterior(n = 10000)
+sorted_pi_values <- sort(pi_values)
+## Left bound
+sorted_pi_values[n * 0.05]
+## Right bound
+sorted_pi_values[n * 0.95]
+```
+
+Compare your empirical results with the exact ones. 
+
+### Importance sampling 
+
+Sometimes, you can't sample directly from $\pi | Y_1$: you can only compute $P(Y_1 | \pi) P(\pi)$. You have to resort to **importance sampling** instead. 
+
+Importance sampling is based on the two simple equalities:
+$$
+\begin{align}
+\int f(\pi)p(\pi)d\pi & \simeq \sum_{i=1}^N f(\pi_i) \quad \text{where} \quad \pi_i \sim p\\
+\int f(\pi)p(\pi)d\pi & = \int f(\pi) \underbrace{\frac{p(\pi)}{q(\pi)}}_{\text{weight}} q(\pi)d\pi \\
+
+\end{align}
+$$
+
+The first equality is the one we used in the previous section on direct sampling but . If you don't know how to sample from $p$ but know how to sample from $q$ and compute $p$, you can combine the two equalities to get 
+$$
+\int f(\pi)p(\pi)d\pi = \int f(\pi) \underbrace{\frac{p(\pi)}{q(\pi)}}_{\text{weight}} q(\pi)d\pi \simeq \sum_{i=1}^N f(\pi_i) \frac{p(\pi_i)}{q(\pi_i)} \quad \text{where} \quad \pi_i \sim q
+$$
+
+Remember that 
+$$
+\begin{align}
+E[\pi |Y_1] & = \int_{0}^1 \pi P(\pi|Y_1)d\pi = \int_{0}^1 \pi \frac{P(Y_1 | \pi)P(\pi)}{P(Y_1)}d\pi \\
+& = \frac{\int_0^1 \pi P(Y_1 | \pi)P(\pi)d\pi}{\int_0^1 1 P(Y_1 | \pi)P(\pi)d\pi} \\
+& = \frac{\int_0^1 \pi \frac{P(Y_1 | \pi)P(\pi)}{q(\pi)} q(\pi)d\pi}{\int_0^1 \frac{P(Y_1 | \pi)P(\pi)}{q(\pi)} q(\pi)d\pi} \\
+& = \frac{\int_0^1 \pi W(\pi) q(\pi)d\pi}{\int_0^1 W(\pi) q(\pi)d\pi} \\ 
+& \simeq \frac{\sum_{i} \pi_i W(\pi_i)}{\sum_{i} W(\pi_i)} \quad \text{where} \quad \pi_i \sim q
+\end{align}
+$$
+
+This suggests the following algorithm to compute $E[\pi|Y_1]$
+
+1. Sample a large number ($N$) of values of $\pi$ from the distribution of $q(\pi)d\pi$: $(\pi_1, \dots, \pi_N)$
+1. Compute the weights $W(\pi_i) = P(Y_1 |\pi_i)P(\pi_i) / q(\pi_i)$
+1. Compute the empirical weighted mean: $\hat{\pi}_{MAP} = \sum_{i=1}^N \pi_i W(\pi_i) / \sum_{i=1}^N W(\pi_i)$ 
+
+**Note** Direct sampling correspond to the special case $q(\pi_i) \propto P(Y_1 |\pi_i)P(\pi_i)$ and $W(\pi_i) = 1$. 
+
+We're going to create a few helper functions:
+
+- A sampler from the distribution $q$ (here a uniform distribution on $[0, 1]$)
+```{r echo = TRUE}
+sample_from_q <- function(n, mean = .5, concentration = 2) {
+  rbeta(n, shape1 = mean * concentration, shape2 = (1 - mean) * concentration)
+}
+```
+
+- A function to compute the weights
+```{r echo = TRUE}
+compute_weights <- function(pi_values, mean = .5, concentration = 2) {
+  ## Observations from first read (Y1 = 15, n = 50)
+  Y <- reads_at_content[1]; n = 50
+  ## Parameters of the prior
+  mu0 = 0.35; nu0 = 90
+  ## Prior 
+  prior <- dbeta(pi_values, shape1 = mu0 * nu0, shape2 = (1 - mu0) * nu0)
+  ## likelihood
+  likelihood <- dbinom(x = Y, size = n, prob = pi_values)
+  ## density of q
+  q_density <- dbeta(pi_values, shape1 = mean * concentration, shape2 = (1 - mean) * concentration)
+  prior * likelihood / q_density
+}
+```
+
+Using `sample_from_q()` and `compute_weights()` to estimate $E[\pi|Y_1]$. 
+
+```{r is-map, exercice = TRUE}
+
+```
+
+```{r is-map-hint-1}
+"Start by simulating a lot of values from q..."
+```
+
+```{r is-map-hint-2}
+"Then compute the weigths"
+```
+
+```{r is-map-hint-3}
+"And end with the weighted mean"
+```
+
+```{r is-map-hint-solution}
+mean <- 0.5; concentration <- 2
+pi_values <- sample_from_q(n = 1000, mean = mean, concentration = 2)
+weights <- compute_weights(pi_values, mean, concentration)
+sum(pi_values * weights) / sum(weights)
+```
+
+Explore different parameters for $q$ and have a look at the distribution of $\hat{E}[\pi|Y_1]$ and/or $\sum_{i} W(\pi_i)$. How do the values change when you change the parameter of $q$ ? 

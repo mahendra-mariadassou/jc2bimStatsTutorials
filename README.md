@@ -118,6 +118,12 @@ learnr::run_tutorial("03.1_estimation", package = "jc2bimStatsTutorials")
 learnr::run_tutorial("03.2_statistical_tests", package = "jc2bimStatsTutorials")
 ```
 
+### Bayesian inference
+
+``` r
+learnr::run_tutorial("04.1_bayesian_statistics", package = "jc2bimStatsTutorials")
+```
+
 ## Troubleshooting
 
 If you have an error when launching a vignette (it may happen on Windows

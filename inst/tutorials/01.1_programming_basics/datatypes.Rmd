@@ -480,8 +480,8 @@ By default, R stores numeric values as floating point. To force R to store them 
 
 ```{r type_question}
 question("What type of data is \"1L\"?", 
-  answer("numeric/double"), 
-  answer("integer", message = "Close, `1L` would be an integer but look closer."),
+  answer("numeric/double", message = "Close, `1L` could be a numeric (which kind to be more precise) but look closer. Do you see the quotes?"), 
+  answer("integer", message = "Close, `1L` would be an integer but look closer. Do you see the quotes?"),
   answer("character", correct = TRUE),
   answer("logical"), 
   allow_retry = TRUE
@@ -624,7 +624,7 @@ promo <- factor(promo)
 
 ### Changing the levels
 
-We want to order the levels of promo according to the periodic table. Is the following code correct? If not, correct it and try to understand why it's wrong. 
+We want to order the levels of promo according to the periodic table (that is "Carbone", "Azote", "Oxygène", "Fluor"). Is the following code correct? If not, correct it and try to understand why it's wrong. 
 
 ```{r factor_ordering, exercise = TRUE}
 promo <- c("Fluor", "Fluor", "Carbone", "Carbone", "Fluor", "Azote", "Azote")
@@ -696,14 +696,17 @@ list(year = 2020, logical = TRUE, program = "Licence FdV")
 
 ### Extracting an element
 
-Extract the element `"Licence FdV"` from the following list
+Extract the element `"Licence FdV"` from the following list. Suggest two different solutions: one with names, the other with positions.
 
 ```{r list_extract_exercise, exercise = TRUE}
 x <- list(year = 2020, logical = TRUE, program = "Licence FdV")
 ```
 
 ```{r list_extract_exercise-solution}
-x$program
+## solution with name
+x$program # or x[["program"]]
+## solution with position
+x[[3]]
 ```
 
 ## Data frames

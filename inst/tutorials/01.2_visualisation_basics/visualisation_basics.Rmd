@@ -210,6 +210,11 @@ Make a scatterplot of `cty` vs `hwy`.
 "Scatterplots are also called points plots and bubble plots. They use the point geom."
 ```
 
+```{r scatterplot-solution}
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = hwy, y = cty))
+```
+
 ### Exercise 3  
 
 What happens if you make a scatterplot of `class` vs `drv`. Try it. Why is the plot not useful?
@@ -386,6 +391,20 @@ ggplot(data = mpg) +
 "Very nice! ggplot2 treats continuous and categorical variables differently. Noteably, ggplot2 supplies a blue gradient when you map a continuous variable to color, and ggplot2 will not map continuous variables to shape."
 ```
     
+```{r cty-solution}
+# Map cty to color
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy, color = cty))
+
+# Map cty to size
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy, size = cty))
+
+# Map cty to shape
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy, shape = cty))
+```    
+    
 ### Exercise 2
 
 Map `class` to `color`, `size`, and `shape` all in the same plot. Does it work?
@@ -402,6 +421,11 @@ ggplot(data = mpg) +
 <div id="multiple-hint">
 **Hint:** Be sure to set each mapping separately, e.g. `color = class`, `size = class`, etc.
 </div>    
+    
+```{r multiple-solution}
+ggplot(data = mpg) + 
+  geom_point(mapping = aes(x = displ, y = hwy, color = class, size = class, shape = class))
+```    
     
 ### Exercise 3
 
@@ -520,7 +544,7 @@ ggplot(data = mpg) +
 
 ggplot2 provides over 30 geom functions that you can use to make plots, and extension packages provide even more (see <https://exts.ggplot2.tidyverse.org/index.html> for a sampling). You'll learn how to use these geoms to explore data in the [Visualize Data]() primer. 
 
-Until then, the best way to get a comprehensive overview of the available geoms is with the [ggplot2 cheatsheet](https://www.rstudio.com/wp-content/uploads/2016/11/ggplot2-cheatsheet-2.1.pdf). To learn more about any single geom, look at its help page, e.g. `?geom_smooth`.
+Until then, the best way to get a comprehensive overview of the available geoms is with the [ggplot2 cheatsheet](https://rstudio.github.io/cheatsheets/data-visualization.pdf). To learn more about any single geom, look at its help page, e.g. `?geom_smooth`.
 
 ### Exercise 1
 

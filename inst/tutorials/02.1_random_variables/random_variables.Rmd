@@ -510,8 +510,8 @@ plot_data <- data.frame(size = jar) %>%
 And we can compute the variance easily as:
 $$
 \begin{align}
-\mathbb{E}(X^2) & = 1^2 \times \frac{1}{16} + 4^2 \times \frac{5}{16} + 8^2 \times \frac{10}{16} = 9.625 \\
-\mathbb{E}(X)^2 & = \left( 1 \times \frac{1}{16} + 4 \times \frac{5}{16} + 8 \times \frac{10}{16} \right)^2 = 5.640625 \\
+\mathbb{E}(X^2) & = 1^2 \times \frac{10}{16} + 4^2 \times \frac{5}{16} + 8^2 \times \frac{1}{16} = 9.625 \\
+\mathbb{E}(X)^2 & = \left( 1 \times \frac{10}{16} + 4 \times \frac{5}{16} + 8 \times \frac{1}{16} \right)^2 = 5.640625 \\
 \mathbb{V}(X) & = \mathbb{E}(X^2) - \mathbb{E}(X)^2 = 3.984375
 \end{align}
 $$

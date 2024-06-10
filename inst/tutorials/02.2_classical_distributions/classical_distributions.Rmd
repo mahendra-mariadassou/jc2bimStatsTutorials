@@ -378,7 +378,7 @@ pnorm(1) - pnorm(-1)
 
 ```{r pnorm_quiz}
 quiz(caption = "pnorm()", 
-     question("Which intervals $I$ satisfy $\\mathbb{P}(X \\in I) = 1/2$", 
+     question("Which intervals $I$ satisfy $\\mathbb{P}(X \\in I) = 0.5$", 
               answer("$I = [0, +\\infty]$", TRUE), 
               answer("$I = [-\\infty, 0]$", TRUE),        
               answer("$I = [-0.25, 0.25]$"),        
